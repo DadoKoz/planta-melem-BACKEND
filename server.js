@@ -7,19 +7,17 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Dopušteni origin-i za CORS
+// Dozvoljeni origin-i za CORS
 const allowedOrigins = [
   "http://localhost:8080",
   "https://planta-melem.vercel.app",
 ];
 
 app.use(cors({
-  origin: function(origin, callback){
-    // Dozvoli zahteve bez origin (npr. Postman)
+  origin: function(origin, callback) {
     if (!origin) return callback(null, true);
-
     if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      const msg = `The CORS policy does not allow access from origin: ${origin}`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
@@ -50,14 +48,15 @@ app.post("/api/order", async (req, res) => {
 
   try {
     let transporter = nodemailer.createTransport({
-      service: "Gmail",
+      host: "mail.plantamelem.com",
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
     });
 
-    // Mail prodavcu
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
@@ -78,7 +77,6 @@ Količina: ${quantity}
       `,
     };
 
-    // Potvrda korisniku (HTML)
     const mailOptionsToCustomer = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -105,14 +103,10 @@ Količina: ${quantity}
       `,
     };
 
-    // Pošalji mail prodavcu
     await transporter.sendMail(mailOptionsToYou);
     console.log("Mail prodavcu poslat.");
 
-    // Log email adrese kupca
     console.log("Šaljem mail kupcu na:", email);
-
-    // Pošalji potvrdu korisniku
     await transporter.sendMail(mailOptionsToCustomer);
     console.log("Potvrda korisniku poslana.");
 
