@@ -11,7 +11,9 @@ const PORT = process.env.PORT || 5001;
 const allowedOrigins = [
   "http://localhost:8080",
   "https://planta-melem.vercel.app",
+  "https://www.plantamelem.com",
 ];
+
 
 app.use(cors({
   origin: function(origin, callback) {
