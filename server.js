@@ -64,7 +64,7 @@ const mailOptionsToYou = {
   html: `
     <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
       <div style="text-align: center;">
-        <img src="https://planta-melem.vercel.app/public/logo.jpg" alt="Logo" style="max-width: 120px; margin-bottom: 20px;" />
+       
         <h2 style="color: #cc3d3d;">Nova narudžba je primljena!</h2>
       </div>
       
@@ -105,7 +105,7 @@ const mailOptionsToYou = {
   html: `
   <div style="font-family: Arial, sans-serif; color: #333; max-width:600px; margin:auto; border:1px solid #eee; padding:20px; border-radius:8px;">
     <div style="text-align:center; margin-bottom:20px;">
-      <img src="https://planta-melem.vercel.app/public/logo.jpg" alt="Logo" style="max-width:150px;"/>
+     
     </div>
     <h2 style="color: #348558; text-align:center;">Hvala na narudžbi, ${firstName} ${lastName}!</h2>
     <p style="font-size:16px; line-height:1.6;">Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
