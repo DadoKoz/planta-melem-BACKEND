@@ -5,10 +5,25 @@ const nodemailer = require("nodemailer");
 const cors = require("cors");
 
 const app = express();
-const PORT = 5001; // tvoj port, promijeni po potrebi
+const PORT = process.env.PORT || 5001;
+
+// Dopušteni origin-i za CORS
+const allowedOrigins = [
+  "http://localhost:8080",
+  "https://planta-melem.vercel.app",
+];
 
 app.use(cors({
-  origin: "http://localhost:8080",
+  origin: function(origin, callback){
+    // Dozvoli zahteve bez origin (npr. Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ["GET", "POST", "OPTIONS"],
   credentials: true,
 }));
@@ -24,7 +39,7 @@ app.post("/api/order", async (req, res) => {
     postalCode,
     country,
     phone,
-    email,       // korisnikov email
+    email,
     product,
     quantity,
   } = req.body;
@@ -42,7 +57,7 @@ app.post("/api/order", async (req, res) => {
       },
     });
 
-    // 1. Mail tebi (prodavcu)
+    // Mail prodavcu
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
@@ -63,7 +78,7 @@ Količina: ${quantity}
       `,
     };
 
-    // 2. Mail korisniku - potvrda narudžbe (HTML)
+    // Potvrda korisniku (HTML)
     const mailOptionsToCustomer = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -90,16 +105,16 @@ Količina: ${quantity}
       `,
     };
 
-  // Pošalji mail tebi (prodavcu)
-await transporter.sendMail(mailOptionsToYou);
-console.log("Mail prodavcu poslat.");
+    // Pošalji mail prodavcu
+    await transporter.sendMail(mailOptionsToYou);
+    console.log("Mail prodavcu poslat.");
 
-// Log email adrese kupca za potvrdu
-console.log("Šaljem mail kupcu na:", email);
+    // Log email adrese kupca
+    console.log("Šaljem mail kupcu na:", email);
 
-// Pošalji potvrdu korisniku
-await transporter.sendMail(mailOptionsToCustomer);
-console.log("Potvrda korisniku poslana.");
+    // Pošalji potvrdu korisniku
+    await transporter.sendMail(mailOptionsToCustomer);
+    console.log("Potvrda korisniku poslana.");
 
     res.status(200).json({ message: "Narudžbina uspešno poslata, potvrda poslata na email!" });
   } catch (error) {
