@@ -57,46 +57,25 @@ app.post("/api/order", async (req, res) => {
       },
     });
 
-const mailOptionsToYou = {
-  from: process.env.EMAIL_USER,
-  to: process.env.EMAIL_USER,
-  subject: "Nova narudžbina melema",
-  html: `
-    <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
-      <div style="text-align: center;">
-       
-        <h2 style="color: #cc3d3d;">Nova narudžba je primljena!</h2>
-      </div>
-      
-      <h3 style="margin-top: 30px;">Podaci o kupcu:</h3>
-      <ul>
-        <li><strong>Ime:</strong> ${firstName}</li>
-        <li><strong>Prezime:</strong> ${lastName}</li>
-        <li><strong>Email:</strong> ${email}</li>
-        <li><strong>Telefon:</strong> ${phone}</li>
-      </ul>
+    const mailOptionsToYou = {
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: "Nova narudžbina melema",
+      text: `
+Imate novu narudžbinu:
 
-      <h3>Adresa za dostavu:</h3>
-      <p>
-        ${address}<br>
-        ${postalCode} ${city}<br>
-        ${country}
-      </p>
-
-      <h3>Detalji narudžbe:</h3>
-      <ul>
-        <li><strong>Proizvod:</strong> ${product}</li>
-        <li><strong>Količina:</strong> ${quantity}</li>
-      </ul>
-
-      <hr style="border: none; border-top: 1px solid #ccc; margin-top: 30px;" />
-      <p style="font-size: 0.9em; color: #777;">
-        Ova poruka je automatski generisana. Za dodatne informacije, posjetite admin panel ili kontaktirajte korisnika direktno.
-      </p>
-    </div>
-  `
-};
-
+Ime: ${firstName}
+Prezime: ${lastName}
+Adresa: ${address}
+Grad: ${city}
+Poštanski broj: ${postalCode}
+Zemlja: ${country}
+Telefon: ${phone}
+Email: ${email}
+Proizvod: ${product}
+Količina: ${quantity}
+      `,
+    };
 
     const mailOptionsToCustomer = {
   from: process.env.EMAIL_USER,
@@ -105,7 +84,7 @@ const mailOptionsToYou = {
   html: `
   <div style="font-family: Arial, sans-serif; color: #333; max-width:600px; margin:auto; border:1px solid #eee; padding:20px; border-radius:8px;">
     <div style="text-align:center; margin-bottom:20px;">
-     
+      <img src="https://planta-melem.vercel.app/public/logo.jpg" alt="Logo" style="max-width:150px;"/>
     </div>
     <h2 style="color: #348558; text-align:center;">Hvala na narudžbi, ${firstName} ${lastName}!</h2>
     <p style="font-size:16px; line-height:1.6;">Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
