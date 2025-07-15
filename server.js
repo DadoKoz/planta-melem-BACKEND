@@ -14,29 +14,37 @@ const allowedOrigins = [
   "https://www.plantamelem.com",
 ];
 
+// 🔐 Ručni CORS headers za svaki request
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  next();
+});
+
+// 🎯 Glavni CORS middleware
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy does not allow access from origin: ${origin}`;
-      return callback(new Error(msg), false);
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // omogućava curl/postman
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
     }
-    return callback(null, true);
   },
   methods: ["GET", "POST", "OPTIONS"],
   credentials: true,
 }));
 
+// 🌐 JSON parsing
 app.use(express.json());
 
+// 📬 Ruta za narudžbu
 app.post("/api/order", async (req, res) => {
-  // Očekujemo da frontend šalje podatke u formatu:
-  // {
-  //   customer: { firstName, lastName, address, city, postalCode, country, phone, email },
-  //   items: [ { id, title, price, quantity }, ... ],
-  //   total: broj
-  // }
-
   const { customer, items, total } = req.body;
 
   if (!customer?.email) {
@@ -58,12 +66,8 @@ app.post("/api/order", async (req, res) => {
       },
     });
 
-    // Pripremi tekst za prodavca sa svim stavkama iz korpe
     const itemsText = items
-      .map(
-        (item) =>
-          `${item.title} - Količina: ${item.quantity} - Cena: ${item.price}`
-      )
+      .map(item => `${item.title} - Količina: ${item.quantity} - Cena: ${item.price}`)
       .join("\n");
 
     const mailOptionsToYou = {
@@ -96,15 +100,11 @@ Ukupno: ${total.toFixed(2)} KM
       html: `
       <div style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #348558;">Hvala na narudžbi, ${customer.firstName} ${customer.lastName}!</h2>
-        <p>Primili smo Vašu narudžbinu i uskoro ćemo je obraditi.</p>
+        <p>Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
         <h3>Detalji narudžbine:</h3>
         <ul>
-          ${items
-            .map(
-              (item) =>
-                `<li>${item.title} - Količina: ${item.quantity} - Cena: ${item.price}</li>`
-            )
-            .join("")}
+          ${items.map(item =>
+            `<li>${item.title} - Količina: ${item.quantity} - Cena: ${item.price}</li>`).join("")}
         </ul>
         <h3>Ukupno:</h3>
         <p><strong>${total.toFixed(2)} KM</strong></p>
@@ -122,18 +122,19 @@ Ukupno: ${total.toFixed(2)} KM
     };
 
     await transporter.sendMail(mailOptionsToYou);
-    console.log("Mail prodavcu poslat.");
+    console.log("✅ Mail prodavcu poslat.");
 
     await transporter.sendMail(mailOptionsToCustomer);
-    console.log("Potvrda korisniku poslana.");
+    console.log("✅ Potvrda korisniku poslana.");
 
     res.status(200).json({ message: "Narudžbina uspešno poslata, potvrda poslata na email!" });
   } catch (error) {
-    console.error("Greška prilikom slanja emaila:", error);
+    console.error("❌ Greška prilikom slanja emaila:", error);
     res.status(500).json({ message: "Greška prilikom slanja narudžbine." });
   }
 });
 
+// 🚀 Start server
 app.listen(PORT, () => {
   console.log(`✅ Server radi na http://localhost:${PORT}`);
 });
