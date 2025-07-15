@@ -30,39 +30,41 @@ app.use(cors({
 app.use(express.json());
 
 app.post("/api/order", async (req, res) => {
-  const {
-    firstName,
-    lastName,
-    address,
-    city,
-    postalCode,
-    country,
-    phone,
-    email,
-    product,
-    quantity,
-  } = req.body;
+  // Očekujemo da frontend šalje podatke u formatu:
+  // {
+  //   customer: { firstName, lastName, address, city, postalCode, country, phone, email },
+  //   items: [ { id, title, price, quantity }, ... ],
+  //   total: broj
+  // }
 
-  if (!email) {
+  const { customer, items, total } = req.body;
+
+  if (!customer?.email) {
     return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbe." });
   }
 
   try {
-  let transporter = nodemailer.createTransport({
-  host: "185.212.108.34",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    servername: "mail.plantamelem.com",
-    rejectUnauthorized: false
-  }
-});
+    let transporter = nodemailer.createTransport({
+      host: "185.212.108.34",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        servername: "mail.plantamelem.com",
+        rejectUnauthorized: false,
+      },
+    });
 
-
+    // Pripremi tekst za prodavca sa svim stavkama iz korpe
+    const itemsText = items
+      .map(
+        (item) =>
+          `${item.title} - Količina: ${item.quantity} - Cena: ${item.price}`
+      )
+      .join("\n");
 
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
@@ -71,35 +73,44 @@ app.post("/api/order", async (req, res) => {
       text: `
 Imate novu narudžbinu:
 
-Ime: ${firstName}
-Prezime: ${lastName}
-Adresa: ${address}
-Grad: ${city}
-Poštanski broj: ${postalCode}
-Zemlja: ${country}
-Telefon: ${phone}
-Email: ${email}
-Proizvod: ${product}
-Količina: ${quantity}
+Ime: ${customer.firstName}
+Prezime: ${customer.lastName}
+Adresa: ${customer.address}
+Grad: ${customer.city}
+Poštanski broj: ${customer.postalCode}
+Zemlja: ${customer.country}
+Telefon: ${customer.phone}
+Email: ${customer.email}
+
+Stavke narudžbine:
+${itemsText}
+
+Ukupno: ${total.toFixed(2)} KM
       `,
     };
 
     const mailOptionsToCustomer = {
       from: process.env.EMAIL_USER,
-      to: email,
+      to: customer.email,
       subject: "Potvrda narudžbe melema",
       html: `
       <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #348558;">Hvala na narudžbi, ${firstName} ${lastName}!</h2>
-        <p>Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
-        <h3>Detalji narudžbe:</h3>
+        <h2 style="color: #348558;">Hvala na narudžbi, ${customer.firstName} ${customer.lastName}!</h2>
+        <p>Primili smo Vašu narudžbinu i uskoro ćemo je obraditi.</p>
+        <h3>Detalji narudžbine:</h3>
         <ul>
-          <li><strong>Proizvod:</strong> ${product}</li>
-          <li><strong>Količina:</strong> ${quantity}</li>
+          ${items
+            .map(
+              (item) =>
+                `<li>${item.title} - Količina: ${item.quantity} - Cena: ${item.price}</li>`
+            )
+            .join("")}
         </ul>
+        <h3>Ukupno:</h3>
+        <p><strong>${total.toFixed(2)} KM</strong></p>
         <h3>Adresa za dostavu:</h3>
-        <p>${address}<br>${city}, ${postalCode}<br>${country}</p>
-        <p>Kontakt telefon: ${phone}</p>
+        <p>${customer.address}<br>${customer.city}, ${customer.postalCode}<br>${customer.country}</p>
+        <p>Kontakt telefon: ${customer.phone}</p>
         <hr style="border:none; border-top:1px solid #ccc;" />
         <p style="font-size: 0.9em; color: #777;">
           Ako imate dodatnih pitanja, slobodno nas kontaktirajte.<br>
