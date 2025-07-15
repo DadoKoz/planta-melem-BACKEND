@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 5001;
 const allowedOrigins = [
   "http://localhost:8080",
   "https://planta-melem.vercel.app",
+  "https://www.plantamelem.com",
 ];
 
 app.use(cors({
@@ -47,15 +48,21 @@ app.post("/api/order", async (req, res) => {
   }
 
   try {
-    let transporter = nodemailer.createTransport({
-      host: "mail.plantamelem.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+  let transporter = nodemailer.createTransport({
+  host: "185.212.108.34",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    servername: "mail.plantamelem.com",
+    rejectUnauthorized: false
+  }
+});
+
+
 
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
@@ -78,43 +85,34 @@ Količina: ${quantity}
     };
 
     const mailOptionsToCustomer = {
-  from: process.env.EMAIL_USER,
-  to: email,
-  subject: "Potvrda narudžbe melema",
-  html: `
-  <div style="font-family: Arial, sans-serif; color: #333; max-width:600px; margin:auto; border:1px solid #eee; padding:20px; border-radius:8px;">
-    <div style="text-align:center; margin-bottom:20px;">
-      <img src="https://planta-melem.vercel.app/public/logo.jpg" alt="Logo" style="max-width:150px;"/>
-    </div>
-    <h2 style="color: #348558; text-align:center;">Hvala na narudžbi, ${firstName} ${lastName}!</h2>
-    <p style="font-size:16px; line-height:1.6;">Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
-    <h3 style="margin-top:30px; color:#555;">Detalji narudžbe:</h3>
-    <ul style="list-style:none; padding:0; font-size:15px;">
-      <li><strong>Proizvod:</strong> ${product}</li>
-      <li><strong>Količina:</strong> ${quantity}</li>
-    </ul>
-    <h3 style="margin-top:30px; color:#555;">Adresa za dostavu:</h3>
-    <p style="font-size:15px; line-height:1.5;">
-      ${address}<br>
-      ${city}, ${postalCode}<br>
-      ${country}
-    </p>
-    <p style="font-size:15px;"><strong>Kontakt telefon:</strong> ${phone}</p>
-    <hr style="border:none; border-top:1px solid #ccc; margin:30px 0;" />
-    <p style="font-size:13px; color:#777; text-align:center;">
-      Ako imate dodatnih pitanja, slobodno nas kontaktirajte.<br>
-      Srdačan pozdrav,<br>
-      Vaš tim za podršku
-    </p>
-  </div>
-  `,
-};
-
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Potvrda narudžbe melema",
+      html: `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #348558;">Hvala na narudžbi, ${firstName} ${lastName}!</h2>
+        <p>Primili smo Vašu narudžbu i uskoro ćemo je obraditi.</p>
+        <h3>Detalji narudžbe:</h3>
+        <ul>
+          <li><strong>Proizvod:</strong> ${product}</li>
+          <li><strong>Količina:</strong> ${quantity}</li>
+        </ul>
+        <h3>Adresa za dostavu:</h3>
+        <p>${address}<br>${city}, ${postalCode}<br>${country}</p>
+        <p>Kontakt telefon: ${phone}</p>
+        <hr style="border:none; border-top:1px solid #ccc;" />
+        <p style="font-size: 0.9em; color: #777;">
+          Ako imate dodatnih pitanja, slobodno nas kontaktirajte.<br>
+          Srdačan pozdrav,<br>
+          Vaš tim za podršku
+        </p>
+      </div>
+      `,
+    };
 
     await transporter.sendMail(mailOptionsToYou);
     console.log("Mail prodavcu poslat.");
 
-    console.log("Šaljem mail kupcu na:", email);
     await transporter.sendMail(mailOptionsToCustomer);
     console.log("Potvrda korisniku poslana.");
 
