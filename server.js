@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -177,6 +178,64 @@ Ukupno: ${total?.toFixed(2) || "0.00"} ${currencyCode}
     res.status(500).json({
       message: "Greška prilikom slanja narudžbine.",
     });
+  }
+});
+
+// ✅ Ruta za kontakt formu
+app.post("/api/contact", async (req, res) => {
+  const { name, email, phone, message } = req.body;
+
+  if (!email || !message || !name) {
+    return res.status(400).json({ message: "Nedostaju obavezna polja." });
+  }
+
+  try {
+    let transporter = nodemailer.createTransport({
+      host: "185.212.108.34",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        servername: "mail.plantamelem.com",
+        rejectUnauthorized: false,
+      },
+    });
+
+    const mailOptions = {
+  from: process.env.EMAIL_USER,
+  to: process.env.EMAIL_USER,
+  subject: "📩 Novi kontakt sa sajta",
+  html: `
+    <div style="background-image: url('cid:backgroundImage'); background-size: cover; background-position: center; padding: 60px 30px; font-family: Arial, sans-serif; color: white; position: relative;">
+      <div style="background-color: rgba(0,0,0,0.6); padding: 40px; border-radius: 12px; max-width: 600px; margin: auto;">
+        <h2 style="font-size: 28px; margin-bottom: 20px;">📩 Novi kontakt sa sajta</h2>
+        <p><strong>Ime:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Telefon:</strong> ${phone || "Nije unesen"}</p>
+        <p style="margin-top: 20px;"><strong>Poruka:</strong><br>${message}</p>
+      </div>
+    </div>
+  `,
+  attachments: [
+    {
+      filename: 'image2.jpeg',
+      path: path.join(__dirname, 'public/image2.jpeg'),
+      cid: 'backgroundImage',
+    },
+  ],
+};
+
+
+    await transporter.sendMail(mailOptions);
+
+    console.log("✅ Kontakt email sa slikom poslat.");
+    res.status(200).json({ message: "Poruka uspešno poslata!" });
+  } catch (error) {
+    console.error("❌ Greška prilikom slanja kontakt emaila:", error);
+    res.status(500).json({ message: "Greška prilikom slanja poruke." });
   }
 });
 
