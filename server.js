@@ -100,7 +100,7 @@ app.post("/api/order", async (req, res) => {
         total: "Total:",
         address: "Shipping Address:",
         contact: "Contact phone:",
-        thanks: "If you have any questions, feel free to contact us.",
+        thanks: "If you have any questions, feel free to contact uss.",
         closing: "Best regards,<br>Your support team",
         itemLine: (item) =>
           `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
