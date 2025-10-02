@@ -44,6 +44,20 @@ app.use(
 
 app.use(express.json());
 
+// Funkcija za kreiranje Nodemailer transportera (top izmena)
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: "mail.plantamelem.com",
+    port: 587,           // promenjeno sa 465 na 587
+    secure: false,       // false za TLS
+    requireTLS: true,    // start TLS
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
+
 // ✅ Ruta za narudžbu
 app.post("/api/order", async (req, res) => {
   const {
@@ -61,19 +75,7 @@ app.post("/api/order", async (req, res) => {
   }
 
   try {
-    let transporter = nodemailer.createTransport({
-      host: "185.212.108.34",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        servername: "mail.plantamelem.com",
-        rejectUnauthorized: false,
-      },
-    });
+    let transporter = createTransporter();
 
     // Tekstovi po jeziku
     const messages = {
@@ -100,7 +102,7 @@ app.post("/api/order", async (req, res) => {
         total: "Total:",
         address: "Shipping Address:",
         contact: "Contact phone:",
-        thanks: "If you have any questions, feel free to contact uss.",
+        thanks: "If you have any questions, feel free to contact us.",
         closing: "Best regards,<br>Your support team",
         itemLine: (item) =>
           `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
@@ -111,9 +113,7 @@ app.post("/api/order", async (req, res) => {
 
     const t = messages[lang] || messages["sr"];
 
-    const itemsText = items
-      .map((item) => t.itemLine(item))
-      .join("\n");
+    const itemsText = items.map((item) => t.itemLine(item)).join("\n");
 
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
@@ -171,7 +171,7 @@ Ukupno: ${total?.toFixed(2) || "0.00"} ${currencyCode}
     console.log("✅ Potvrda korisniku poslana.");
 
     res.status(200).json({
-      message: "Narudžbina uspešno poslata, potvrda poslata na email!",
+      message: "Narudžbina uspešno poslata, potvrda poslana na email!",
     });
   } catch (error) {
     console.error("❌ Greška prilikom slanja emaila:", error);
@@ -190,25 +190,13 @@ app.post("/api/contact", async (req, res) => {
   }
 
   try {
-    let transporter = nodemailer.createTransport({
-      host: "185.212.108.34",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        servername: "mail.plantamelem.com",
-        rejectUnauthorized: false,
-      },
-    });
+    let transporter = createTransporter();
 
     const mailOptions = {
-  from: process.env.EMAIL_USER,
-  to: process.env.EMAIL_USER,
-  subject: "📩 Novi kontakt sa sajta",
-  html: `
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: "📩 Novi kontakt sa sajta",
+      html: `
     <div style="background-image: url('cid:backgroundImage'); background-size: cover; background-position: center; padding: 60px 30px; font-family: Arial, sans-serif; color: white; position: relative;">
       <div style="background-color: rgba(0,0,0,0.6); padding: 40px; border-radius: 12px; max-width: 600px; margin: auto;">
         <h2 style="font-size: 28px; margin-bottom: 20px;">📩 Novi kontakt sa sajta</h2>
@@ -219,15 +207,14 @@ app.post("/api/contact", async (req, res) => {
       </div>
     </div>
   `,
-  attachments: [
-    {
-      filename: 'image2.jpeg',
-      path: path.join(__dirname, 'public/image2.jpeg'),
-      cid: 'backgroundImage',
-    },
-  ],
-};
-
+      attachments: [
+        {
+          filename: 'image2.jpeg',
+          path: path.join(__dirname, 'public/image2.jpeg'),
+          cid: 'backgroundImage',
+        },
+      ],
+    };
 
     await transporter.sendMail(mailOptions);
 
