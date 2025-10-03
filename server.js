@@ -44,24 +44,18 @@ app.use(
 
 app.use(express.json());
 
-// 🔧 Funkcija za kreiranje Nodemailer transportera sa logovima
 function createTransporter() {
   return nodemailer.createTransport({
     host: "mail.plantamelem.com",
-    port: 587,             // probaj i 465 ako 587 ne radi
-    secure: false,         // true ako koristiš port 465
-    requireTLS: true,      // STARTTLS na 587
+    port: 465,            // koristi 465, ne 587
+    secure: true,         // true = koristi SSL/TLS od starta
     auth: {
-      user: process.env.EMAIL_USER,
+      user: process.env.EMAIL_USER, // npr. "info@plantamelem.com"
       pass: process.env.EMAIL_PASS,
     },
-    tls: {
-      rejectUnauthorized: false, // ignorisi self-signed cert greške
-    },
-    logger: true,  // 📜 logovi u konzoli
-    debug: true,   // 🐛 dodatni debug info
   });
 }
+
 
 // ✅ Ruta za narudžbu
 app.post("/api/order", async (req, res) => {
