@@ -1,42 +1,39 @@
 import { Resend } from "resend";
-import express from "express";
-import cors from "cors";
+import Cors from "cors";
 
-const app = express();
-const PORT = process.env.PORT || 5001;
+// Inicijalizacija CORS middleware
+const cors = Cors({
+  origin: [
+    "http://localhost:8080",
+    "https://planta-melem.vercel.app",
+    "https://www.plantamelem.com",
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true,
+});
 
-// ✅ Resend client
+// Pomoćna funkcija za pokretanje middleware-a u serverless okruženju
+function runMiddleware(req, res, fn) {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result) => {
+      if (result instanceof Error) return reject(result);
+      return resolve(result);
+    });
+  });
+}
+
+// Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ✅ Dozvoljeni origin-i
-const allowedOrigins = [
-  "http://localhost:8080",
-  "https://planta-melem.vercel.app",
-  "https://www.plantamelem.com",
-];
+export default async function handler(req, res) {
+  // Pokreni CORS middleware
+  await runMiddleware(req, res, cors);
 
-// ✅ CORS middleware
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // omogućava request bez origin (npr. Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error(`Not allowed by CORS: ${origin}`), false);
-      }
-    },
-    methods: ["GET", "POST", "OPTIONS"],
-    credentials: true,
-  })
-);
+  // Dozvoljeni samo POST zahtjevi
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
-// ✅ Body parser
-app.use(express.json());
-
-// ✅ Ruta za narudžbu
-app.post("/api/order", async (req, res) => {
   const { customer, items, total, lang = "sr", currencyCode = "BAM" } = req.body;
 
   if (!customer?.email) {
@@ -92,12 +89,4 @@ app.post("/api/order", async (req, res) => {
     console.error("❌ Greška prilikom slanja emaila:", error);
     res.status(500).json({ message: "Greška prilikom slanja narudžbine." });
   }
-});
-
-// ✅ OPTIONS handler za serverless i preflight
-app.options("*", cors());
-
-// 🚀 Start server
-app.listen(PORT, () => {
-  console.log(`Server radi na http://localhost:${PORT}`);
-});
+}
