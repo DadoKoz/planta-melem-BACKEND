@@ -44,17 +44,22 @@ app.use(
 
 app.use(express.json());
 
-// Funkcija za kreiranje Nodemailer transportera (top izmena)
+// 🔧 Funkcija za kreiranje Nodemailer transportera sa logovima
 function createTransporter() {
   return nodemailer.createTransport({
     host: "mail.plantamelem.com",
-    port: 465,           // promenjeno sa 465 na 587
-    secure: true,       // false za TLS
-    requireTLS: true,    // start TLS
+    port: 587,             // probaj i 465 ako 587 ne radi
+    secure: false,         // true ako koristiš port 465
+    requireTLS: true,      // STARTTLS na 587
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false, // ignorisi self-signed cert greške
+    },
+    logger: true,  // 📜 logovi u konzoli
+    debug: true,   // 🐛 dodatni debug info
   });
 }
 
@@ -209,9 +214,9 @@ app.post("/api/contact", async (req, res) => {
   `,
       attachments: [
         {
-          filename: 'image2.jpeg',
-          path: path.join(__dirname, 'public/image2.jpeg'),
-          cid: 'backgroundImage',
+          filename: "image2.jpeg",
+          path: path.join(__dirname, "public/image2.jpeg"),
+          cid: "backgroundImage",
         },
       ],
     };
