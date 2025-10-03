@@ -48,8 +48,8 @@ app.use(express.json());
 function createTransporter() {
   return nodemailer.createTransport({
     host: "mail.plantamelem.com",
-    port: 587,           // promenjeno sa 465 na 587
-    secure: false,       // false za TLS
+    port: 465,           // promenjeno sa 465 na 587
+    secure: true,       // false za TLS
     requireTLS: true,    // start TLS
     auth: {
       user: process.env.EMAIL_USER,
