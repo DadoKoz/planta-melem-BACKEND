@@ -1,43 +1,41 @@
 import { Resend } from "resend";
-import Cors from "cors";
+import express from "express";
+import cors from "cors";
 
-// Inicijalizacija CORS middleware
-const cors = Cors({
-  origin: [
-    "http://localhost:8080",
-    "https://planta-melem.vercel.app",
-    "https://www.plantamelem.com",
-  ],
-  methods: ["GET", "POST", "OPTIONS"],
-  credentials: true,
-});
+const app = express();
+const PORT = process.env.PORT || 5001;
 
-// Pomoćna funkcija za pokretanje middleware-a u serverless okruženju
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) return reject(result);
-      return resolve(result);
-    });
-  });
-}
-
-// Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export default async function handler(req, res) {
-  // Pokreni CORS middleware
-  await runMiddleware(req, res, cors);
+const allowedOrigins = [
+  "http://localhost:8080",
+  "https://planta-melem.vercel.app",
+  "https://www.plantamelem.com",
+];
 
-  // Dozvoljeni samo POST zahtjevi
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error(`Not allowed by CORS: ${origin}`), false);
+      }
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+  })
+);
 
+app.use(express.json());
+
+// ✅ Ruta za narudžbu
+app.post("/api/order", async (req, res) => {
   const { customer, items, total, lang = "sr", currencyCode = "BAM" } = req.body;
 
   if (!customer?.email) {
-    return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbine." });
+    return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbe." });
   }
 
   try {
@@ -46,6 +44,8 @@ export default async function handler(req, res) {
         subject: "Potvrda narudžbe melema",
         heading: `Hvala na narudžbi, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "Primili smo Vašu narudžbu i uskoro ćemo je obraditi.",
+        itemLine: (item) =>
+          `${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -53,6 +53,8 @@ export default async function handler(req, res) {
         subject: "Order Confirmation - Planta Melem",
         heading: `Thank you for your order, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "We have received your order and will process it shortly.",
+        itemLine: (item) =>
+          `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -89,4 +91,9 @@ export default async function handler(req, res) {
     console.error("❌ Greška prilikom slanja emaila:", error);
     res.status(500).json({ message: "Greška prilikom slanja narudžbine." });
   }
-}
+});
+
+// 🚀 Start server
+app.listen(PORT, () => {
+  console.log(`Server radi na http://localhost:${PORT}`);
+});
