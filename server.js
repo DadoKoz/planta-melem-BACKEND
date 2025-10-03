@@ -5,17 +5,21 @@ import cors from "cors";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// ✅ Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// ✅ Dozvoljeni origin-i
 const allowedOrigins = [
   "http://localhost:8080",
   "https://planta-melem.vercel.app",
   "https://www.plantamelem.com",
 ];
 
+// ✅ CORS middleware
 app.use(
   cors({
     origin: function (origin, callback) {
+      // omogućava request bez origin (npr. Postman)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -28,6 +32,7 @@ app.use(
   })
 );
 
+// ✅ Body parser
 app.use(express.json());
 
 // ✅ Ruta za narudžbu
@@ -35,7 +40,7 @@ app.post("/api/order", async (req, res) => {
   const { customer, items, total, lang = "sr", currencyCode = "BAM" } = req.body;
 
   if (!customer?.email) {
-    return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbe." });
+    return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbine." });
   }
 
   try {
@@ -44,8 +49,6 @@ app.post("/api/order", async (req, res) => {
         subject: "Potvrda narudžbe melema",
         heading: `Hvala na narudžbi, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "Primili smo Vašu narudžbu i uskoro ćemo je obraditi.",
-        itemLine: (item) =>
-          `${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -53,8 +56,6 @@ app.post("/api/order", async (req, res) => {
         subject: "Order Confirmation - Planta Melem",
         heading: `Thank you for your order, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "We have received your order and will process it shortly.",
-        itemLine: (item) =>
-          `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -92,6 +93,9 @@ app.post("/api/order", async (req, res) => {
     res.status(500).json({ message: "Greška prilikom slanja narudžbine." });
   }
 });
+
+// ✅ OPTIONS handler za serverless i preflight
+app.options("*", cors());
 
 // 🚀 Start server
 app.listen(PORT, () => {
