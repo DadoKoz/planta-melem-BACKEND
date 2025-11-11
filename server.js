@@ -3,12 +3,13 @@ import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
 
-// Učitavanje .env fajla
+// Učitavanje env promenljivih (Render koristi Environment Variables)
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Dozvoljene origin adrese
 const allowedOrigins = [
   "http://localhost:8080",
   "https://planta-melem.vercel.app",
@@ -32,12 +33,17 @@ app.use(
 
 app.use(express.json());
 
+// Health check ruta da Render ne timeout-uje deploy
+app.get("/", (req, res) => {
+  res.send("Backend je live!");
+});
+
 // Nodemailer transporter za Gmail
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.GMAIL_USER,       // tvoj Gmail, npr. "plantamelem@gmail.com"
-    pass: process.env.GMAIL_APP_PASS,   // 16-znamenkasti App Password (bez razmaka)
+    user: process.env.GMAIL_USER,       // Gmail account
+    pass: process.env.GMAIL_APP_PASS,   // 16-znamenkasti App Password
   },
 });
 
