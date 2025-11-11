@@ -1,11 +1,13 @@
-import { Resend } from "resend";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import nodemailer from "nodemailer";
+
+// Učitavanje .env fajla
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const allowedOrigins = [
   "http://localhost:8080",
@@ -30,6 +32,15 @@ app.use(
 
 app.use(express.json());
 
+// Nodemailer transporter za Gmail
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,       // tvoj Gmail, npr. "plantamelem@gmail.com"
+    pass: process.env.GMAIL_APP_PASS,   // 16-znamenkasti App Password (bez razmaka)
+  },
+});
+
 // ✅ Ruta za narudžbu
 app.post("/api/order", async (req, res) => {
   const { customer, items, total, lang = "sr", currencyCode = "BAM" } = req.body;
@@ -44,8 +55,6 @@ app.post("/api/order", async (req, res) => {
         subject: "Potvrda narudžbe melema",
         heading: `Hvala na narudžbi, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "Primili smo Vašu narudžbu i uskoro ćemo je obraditi.",
-        itemLine: (item) =>
-          `${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -53,8 +62,6 @@ app.post("/api/order", async (req, res) => {
         subject: "Order Confirmation - Planta Melem",
         heading: `Thank you for your order, ${customer.firstName || ""} ${customer.lastName || ""}!`,
         received: "We have received your order and will process it shortly.",
-        itemLine: (item) =>
-          `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -64,16 +71,16 @@ app.post("/api/order", async (req, res) => {
     const itemsHtml = items.map((i) => t.itemHtml(i)).join("");
 
     // Mail prodavcu
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM,
-      to: process.env.EMAIL_FROM,
+    await transporter.sendMail({
+      from: `"Planta Melem" <${process.env.GMAIL_USER}>`,
+      to: process.env.GMAIL_USER,
       subject: "Nova narudžbina melema",
       text: `Nova narudžbina od ${customer.firstName || ""} ${customer.lastName || ""}, email: ${customer.email}`,
     });
 
     // Mail korisniku
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+    await transporter.sendMail({
+      from: `"Planta Melem" <${process.env.GMAIL_USER}>`,
       to: customer.email,
       subject: t.subject,
       html: `
