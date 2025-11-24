@@ -187,7 +187,7 @@ app.post("/api/contact", async (req, res) => {
   try {
     let transporter = nodemailer.createTransport({
       host: "185.212.108.34",
-      port: 465,
+      port: 587,
       secure: true,
       auth: {
         user: process.env.EMAIL_USER,
