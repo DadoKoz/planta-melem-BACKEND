@@ -1,12 +1,15 @@
 require("dotenv").config();
 
 const express = require("express");
-const nodemailer = require("nodemailer");
 const cors = require("cors");
 const path = require("path");
+const sgMail = require("@sendgrid/mail");
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// SendGrid API key
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Dozvoljeni origin-i za CORS
 const allowedOrigins = [
@@ -44,44 +47,17 @@ app.use(
 
 app.use(express.json());
 
-
-// ------------------------------------------------------------
-// ✅ TRANSPORTER — GMAIL ZA OBA EMAILA
-// ------------------------------------------------------------
-function createGmailTransporter() {
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // <— MUST HAVE
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-}
-
-
 // ------------------------------------------------------------
 // ✅ Ruta za narudžbu
 // ------------------------------------------------------------
 app.post("/api/order", async (req, res) => {
-  const {
-    customer,
-    items,
-    total,
-    lang = "sr",
-    currencyCode = "BAM",
-  } = req.body;
+  const { customer, items, total, lang = "sr", currencyCode = "BAM" } = req.body;
 
   if (!customer?.email) {
-    return res.status(400).json({
-      message: "Email je obavezan za potvrdu narudžbe.",
-    });
+    return res.status(400).json({ message: "Email je obavezan za potvrdu narudžbe." });
   }
 
   try {
-    const transporter = createGmailTransporter();
-
     const messages = {
       sr: {
         subject: "Potvrda narudžbe melema",
@@ -93,8 +69,6 @@ app.post("/api/order", async (req, res) => {
         contact: "Kontakt telefon:",
         thanks: "Ako imate dodatnih pitanja, slobodno nas kontaktirajte.",
         closing: "Srdačan pozdrav,<br>Vaš tim za podršku",
-        itemLine: (item) =>
-          `${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Količina: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -108,8 +82,6 @@ app.post("/api/order", async (req, res) => {
         contact: "Contact phone:",
         thanks: "If you have any questions, feel free to contact us.",
         closing: "Best regards,<br>Your support team",
-        itemLine: (item) =>
-          `${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}`,
         itemHtml: (item) =>
           `<li>${item.title || ""} - Quantity: ${item.quantity || 1} × ${(item.basePrice ?? 0).toFixed(2)} ${currencyCode} = ${((item.basePrice ?? 0) * (item.quantity || 1)).toFixed(2)} ${currencyCode}</li>`,
       },
@@ -117,74 +89,56 @@ app.post("/api/order", async (req, res) => {
 
     const t = messages[lang] || messages["sr"];
 
-    const itemsText = items.map((item) => t.itemLine(item)).join("\n");
+    const itemsHtml = items.map((item) => t.itemHtml(item)).join("");
 
-    const mailOptionsToYou = {
-      from: process.env.EMAIL_USER,
+    // Mail prodavcu
+    const msgToYou = {
       to: process.env.EMAIL_USER,
+      from: process.env.EMAIL_USER,
       subject: "Nova narudžbina melema",
-      text: `
-Imate novu narudžbinu:
-
-Ime: ${customer.firstName || ""}
-Prezime: ${customer.lastName || ""}
-Adresa: ${customer.address || ""}
-Grad: ${customer.city || ""}
-Poštanski broj: ${customer.postalCode || ""}
-Zemlja: ${customer.country || ""}
-Telefon: ${customer.phone || ""}
-Email: ${customer.email || ""}
-
-Stavke narudžbine:
-${itemsText}
-
-Ukupno: ${total?.toFixed(2) || "0.00"} ${currencyCode}
+      html: `
+        <h2>Nova narudžbina</h2>
+        <p><strong>Ime:</strong> ${customer.firstName || ""}</p>
+        <p><strong>Prezime:</strong> ${customer.lastName || ""}</p>
+        <p><strong>Email:</strong> ${customer.email || ""}</p>
+        <p><strong>Telefon:</strong> ${customer.phone || ""}</p>
+        <h3>Stavke narudžbine:</h3>
+        <ul>${itemsHtml}</ul>
+        <p><strong>Ukupno:</strong> ${total?.toFixed(2) || "0.00"} ${currencyCode}</p>
+        <p><strong>Adresa:</strong> ${customer.address || ""}, ${customer.city || ""}, ${customer.postalCode || ""}, ${customer.country || ""}</p>
       `,
     };
 
-    const mailOptionsToCustomer = {
-      from: process.env.EMAIL_USER,
+    // Mail korisniku
+    const msgToCustomer = {
       to: customer.email,
+      from: process.env.EMAIL_USER,
       subject: t.subject,
       html: `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #348558;">${t.heading}</h2>
+        <h2>${t.heading}</h2>
         <p>${t.received}</p>
         <h3>${t.details}</h3>
-        <ul>
-          ${items.map((item) => t.itemHtml(item)).join("")}
-        </ul>
-        <h3>${t.total}</h3>
-        <p><strong>${total?.toFixed(2) || "0.00"} ${currencyCode}</strong></p>
-        <h3>${t.address}</h3>
-        <p>${customer.address || ""}<br>${customer.city || ""}, ${customer.postalCode || ""}<br>${customer.country || ""}</p>
+        <ul>${itemsHtml}</ul>
+        <p><strong>${t.total}</strong> ${total?.toFixed(2) || "0.00"} ${currencyCode}</p>
+        <p><strong>${t.address}</strong> ${customer.address || ""}, ${customer.city || ""}, ${customer.postalCode || ""}, ${customer.country || ""}</p>
         <p>${t.contact}: ${customer.phone || ""}</p>
-        <hr style="border:none; border-top:1px solid #ccc;" />
-        <p style="font-size: 0.9em; color: #777;">
-          ${t.thanks}<br>
-          ${t.closing}
-        </p>
-      </div>
+        <hr>
+        <p>${t.thanks}<br>${t.closing}</p>
       `,
     };
 
-    await transporter.sendMail(mailOptionsToYou);
-    await transporter.sendMail(mailOptionsToCustomer);
+    await sgMail.send(msgToYou);
+    await sgMail.send(msgToCustomer);
 
-    res.status(200).json({
-      message: "Narudžbina uspešno poslata, potvrda poslata na email!",
-    });
+    res.status(200).json({ message: "Narudžbina uspešno poslata, potvrda poslata na email!" });
   } catch (error) {
     console.error("❌ Greška prilikom slanja emaila:", error);
-    res.status(500).json({
-      message: "Greška prilikom slanja narudžbine.",
-    });
+    res.status(500).json({ message: "Greška prilikom slanja narudžbine." });
   }
 });
 
-
 // ------------------------------------------------------------
-// ✅ Ruta za kontakt — SADA KORISTI GMAIL SMTP
+// ✅ Ruta za kontakt formu
 // ------------------------------------------------------------
 app.post("/api/contact", async (req, res) => {
   const { name, email, phone, message } = req.body;
@@ -194,24 +148,20 @@ app.post("/api/contact", async (req, res) => {
   }
 
   try {
-    const transporter = createGmailTransporter();
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    const msg = {
       to: process.env.EMAIL_USER,
+      from: process.env.EMAIL_USER,
       subject: "📩 Novi kontakt sa sajta",
       html: `
-        <div style="padding: 20px; font-family: Arial; color: #333;">
-          <h2>Novi kontakt sa sajta</h2>
-          <p><strong>Ime:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Telefon:</strong> ${phone || "Nije unesen"}</p>
-          <p><strong>Poruka:</strong><br>${message}</p>
-        </div>
+        <h2>Novi kontakt sa sajta</h2>
+        <p><strong>Ime:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Telefon:</strong> ${phone || "Nije unesen"}</p>
+        <p><strong>Poruka:</strong><br>${message}</p>
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(msg);
 
     res.status(200).json({ message: "Poruka uspešno poslata!" });
   } catch (error) {
@@ -219,7 +169,6 @@ app.post("/api/contact", async (req, res) => {
     res.status(500).json({ message: "Greška prilikom slanja poruke." });
   }
 });
-
 
 // ------------------------------------------------------------
 // 🚀 Start server
