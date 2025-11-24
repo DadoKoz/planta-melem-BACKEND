@@ -62,18 +62,13 @@ app.post("/api/order", async (req, res) => {
 
   try {
     let transporter = nodemailer.createTransport({
-      host: "185.212.108.34",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        servername: "mail.plantamelem.com",
-        rejectUnauthorized: false,
-      },
-    });
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
 
     // Tekstovi po jeziku
     const messages = {
