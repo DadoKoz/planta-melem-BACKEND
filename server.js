@@ -44,7 +44,26 @@ app.use(
 
 app.use(express.json());
 
+
+// ------------------------------------------------------------
+// ✅ TRANSPORTER — GMAIL ZA OBA EMAILA
+// ------------------------------------------------------------
+function createGmailTransporter() {
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // <— MUST HAVE
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
+
+
+// ------------------------------------------------------------
 // ✅ Ruta za narudžbu
+// ------------------------------------------------------------
 app.post("/api/order", async (req, res) => {
   const {
     customer,
@@ -61,16 +80,8 @@ app.post("/api/order", async (req, res) => {
   }
 
   try {
-    let transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+    const transporter = createGmailTransporter();
 
-
-    // Tekstovi po jeziku
     const messages = {
       sr: {
         subject: "Potvrda narudžbe melema",
@@ -106,9 +117,7 @@ app.post("/api/order", async (req, res) => {
 
     const t = messages[lang] || messages["sr"];
 
-    const itemsText = items
-      .map((item) => t.itemLine(item))
-      .join("\n");
+    const itemsText = items.map((item) => t.itemLine(item)).join("\n");
 
     const mailOptionsToYou = {
       from: process.env.EMAIL_USER,
@@ -160,10 +169,7 @@ Ukupno: ${total?.toFixed(2) || "0.00"} ${currencyCode}
     };
 
     await transporter.sendMail(mailOptionsToYou);
-    console.log("✅ Mail prodavcu poslat.");
-
     await transporter.sendMail(mailOptionsToCustomer);
-    console.log("✅ Potvrda korisniku poslana.");
 
     res.status(200).json({
       message: "Narudžbina uspešno poslata, potvrda poslata na email!",
@@ -176,7 +182,10 @@ Ukupno: ${total?.toFixed(2) || "0.00"} ${currencyCode}
   }
 });
 
-// ✅ Ruta za kontakt formu
+
+// ------------------------------------------------------------
+// ✅ Ruta za kontakt — SADA KORISTI GMAIL SMTP
+// ------------------------------------------------------------
 app.post("/api/contact", async (req, res) => {
   const { name, email, phone, message } = req.body;
 
@@ -185,48 +194,25 @@ app.post("/api/contact", async (req, res) => {
   }
 
   try {
-    let transporter = nodemailer.createTransport({
-      host: "185.212.108.34",
-      port: 587,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      tls: {
-        servername: "mail.plantamelem.com",
-        rejectUnauthorized: false,
-      },
-    });
+    const transporter = createGmailTransporter();
 
     const mailOptions = {
-  from: process.env.EMAIL_USER,
-  to: process.env.EMAIL_USER,
-  subject: "📩 Novi kontakt sa sajta",
-  html: `
-    <div style="background-image: url('cid:backgroundImage'); background-size: cover; background-position: center; padding: 60px 30px; font-family: Arial, sans-serif; color: white; position: relative;">
-      <div style="background-color: rgba(0,0,0,0.6); padding: 40px; border-radius: 12px; max-width: 600px; margin: auto;">
-        <h2 style="font-size: 28px; margin-bottom: 20px;">📩 Novi kontakt sa sajta</h2>
-        <p><strong>Ime:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Telefon:</strong> ${phone || "Nije unesen"}</p>
-        <p style="margin-top: 20px;"><strong>Poruka:</strong><br>${message}</p>
-      </div>
-    </div>
-  `,
-  attachments: [
-    {
-      filename: 'image2.jpeg',
-      path: path.join(__dirname, 'public/image2.jpeg'),
-      cid: 'backgroundImage',
-    },
-  ],
-};
-
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: "📩 Novi kontakt sa sajta",
+      html: `
+        <div style="padding: 20px; font-family: Arial; color: #333;">
+          <h2>Novi kontakt sa sajta</h2>
+          <p><strong>Ime:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Telefon:</strong> ${phone || "Nije unesen"}</p>
+          <p><strong>Poruka:</strong><br>${message}</p>
+        </div>
+      `,
+    };
 
     await transporter.sendMail(mailOptions);
 
-    console.log("✅ Kontakt email sa slikom poslat.");
     res.status(200).json({ message: "Poruka uspešno poslata!" });
   } catch (error) {
     console.error("❌ Greška prilikom slanja kontakt emaila:", error);
@@ -234,7 +220,10 @@ app.post("/api/contact", async (req, res) => {
   }
 });
 
+
+// ------------------------------------------------------------
 // 🚀 Start server
+// ------------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`✅ Server radi na http://localhost:${PORT}`);
 });
